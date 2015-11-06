@@ -19,6 +19,7 @@ package stefans_libs::SRA_parser::SRX;
 #use lib "$FindBin::Bin/../lib/";
 use strict;
 use warnings;
+use base ('stefans_libs::SRA_parser::web_parser_ext');
 
 =for comment
 
@@ -64,46 +65,31 @@ sub new {
 
 }
 
-sub get_web {
-	my ( $self, $GEO_ID, $outpath ) = @_;
-	system( "wget $self->{'url'}$GEO_ID -O $self->{'path'}/$GEO_ID.html" )
-	  unless ( -f "$self->{'path'}/$GEO_ID.html" );
-	return "$self->{'path'}/$GEO_ID.html";
-}
 
 sub get_info_4 {
 	my ( $self, $accession, $ret ) = @_;
 	open( IN, "<" . $self->get_web($accession) ) or die $!;
-	my ( $loi );
+	$self->{'act_ret'} = $ret;
+	my ( $loi, @SRR );
+	$self->_setup();
 	while (<IN>) {
 		$loi = $_
 		  if ( $_ =~ m/<div><p class="details expand e-hidden"><b><a href="/ );
+		map {$self->_add_2_IDs ( 'SRR', $_ )} @{$self->search_4_acc_type($_,'SRR')};
 	}
 	close ( IN);
-	$loi =~ s|<.+?>|!!|g;
-	$loi = [ split( /!!*/, $loi ) ];
-	map {
-		if ( $_ =~ m/^([A-z]+)\d+$/ ) { $ret->{$1} = $_ }
-		elsif ( $_ =~ m/(GSM\d+)/ ) { $ret->{'GSM'} = $1 }
-		elsif ( $_ =~ m/Mb downloads/ ) { $ret->{'file_stats'}= $_ }
-	} @$loi;
-	my ($a,$b);
-	for ( my $i = 0; $i< @$loi; $i+=2 ) {
-		@$loi[$i] =~ s/: $//;
-		$a ->{@$loi[$i]} = @$loi[$i+1];
-	}
-	for ( my $i = 1; $i< @$loi; $i+=2 ) {
-		@$loi[$i] =~ s/: $//;
-		$b ->{@$loi[$i]} = @$loi[$i+1];
-	}
-	foreach ( qw(Layout Library Sample Construction protocol Strategy Source ), 'hide Abstract' ) {
+	
+	$loi = $self->_rem_tags_splice($loi);
+	( $a, $b ) = $self->preprocess_loi ( $loi );
+	
+	foreach ( qw(Layout Sample Construction protocol Strategy Source ), 'hide Abstract' ,'Description') {
 		if ($a->{$_}) {
-			$ret->{$_} = $a->{$_};
+			$self->_add_2_IDs( $_, $a->{$_} );
 		}else {
-			$ret->{$_} = $b->{$_};
+			$self->_add_2_IDs( $_, $b->{$_} );
 		}
 	}
-	return $ret;
+	return $self->{'act_ret'};
 }
 
 1;

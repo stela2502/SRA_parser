@@ -18,7 +18,7 @@ package stefans_libs::SRA_parser::SAMN;
 #use lib "$FindBin::Bin/../lib/";
 use strict;
 use warnings;
-
+use base ('stefans_libs::SRA_parser::web_parser_ext');
 
 =for comment
 
@@ -65,47 +65,42 @@ sub new{
 
 }
 
-sub get_web {
-	my ( $self, $GEO_ID, $outpath ) = @_;
-	system( "wget $self->{'url'}$GEO_ID -O $self->{'path'}/$GEO_ID.html" )
-	  unless ( -f "$self->{'path'}/$GEO_ID.html" );
-	return "$self->{'path'}/$GEO_ID.html";
-}
-
 sub get_info_4 {
 	my ( $self, $accession, $ret ) = @_;
 	open( IN, "<" . $self->get_web($accession) ) or die $!;
+	$self->{'act_ret'} = $ret;
 	my ( $loi );
 	while (<IN>) {
 		$loi = $_
 		  if ( $_ =~ m/<div><div class="rprt"><h2 class="title">/ );
 	}
 	close ( IN);
-	$loi =~ s|<.+?>|!!|g;
-	$loi = [ split( /!!*/, $loi ) ];
-	map {
-		if ( $_ =~ m/^([A-z]+)\d+$/ ) { $ret->{$1} = $_ }
-		elsif ( $_ =~ m/(GSM\d+)/ ) { $ret->{'GSM'} = $1 }
-		elsif ( $_ =~ m/Mb downloads/ ) { $ret->{'file_stats'}= $_ }
-	} @$loi;
-	my ($a,$b);
-	for ( my $i = 0; $i< @$loi; $i+=2 ) {
-		@$loi[$i] =~ s/: $//;
-		$a ->{@$loi[$i]} = @$loi[$i+1];
-	}
-	for ( my $i = 1; $i< @$loi; $i+=2 ) {
-		@$loi[$i] =~ s/: $//;
-		$b ->{@$loi[$i]} = @$loi[$i+1];
-	}
-	foreach ( qw(Layout Library Sample Construction protocol Strategy Source ), 'cell type' ) {
-		if ($a->{$_}) {
-			$ret->{$_} = $a->{$_};
-		}else {
-			$ret->{$_} = $b->{$_};
+	$loi = $self->_rem_tags_splice($loi);
+	my ( $a, $b);
+	( $a, $b ) = $self->preprocess_loi ( $loi );
+	
+	## All values after atributes are of interest!
+	my $use = 0;
+	foreach ( @$loi ){
+		$use ++;
+		if ( $_ eq "Attributes") {
+			for ( my $i = $use; $i < @$loi; $i+=2 ){
+				last if ( @$loi[$i] eq " ");
+				$self->_add_2_IDs(@$loi[$i], @$loi[$i+1]);
+			}
+			last;
 		}
 	}
-	die "\$exp = ".root->print_perl_var_def( { 'a' => $a, 'b' => $b, 'ret' => $ret } ).";\n";
-	return $ret;
+	foreach ( qw(Organism strain source_name passages), 'cell type', 'ID', 'Accession' ) {
+		if ($a->{$_}) {
+			$self->_add_2_IDs($_, $a->{$_} );
+		}else {
+			$self->_add_2_IDs($_, $b->{$_} );
+		}
+	}
+	
+#	die "\$exp = ".root->print_perl_var_def( { 'a' => $a, 'b' => $b, 'ret' => $ret, 'loi' => $loi } ).";\n";
+	return $self->{'act_ret'};
 }
 
 1;

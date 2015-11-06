@@ -24,6 +24,7 @@ use Cwd;
 
 use stefans_libs::SRA_parser::SRX;
 use stefans_libs::SRA_parser::SAMN;
+
 use stefans_libs::flexible_data_structures::data_table;
 
 =for comment
@@ -59,35 +60,63 @@ sub new{
 
 	my ( $self );
 	$path ||= getcwd;
+	
+	unless ( -d $path ){
+		mkdir( $path ) or Carp::confess ( "Could neither access nor create the outpath '$path'\n$!\n" );
+	}
 
 	$self = {
 		'path' => $path,
-		'srx' => stefans_libs::SRA_parser::SRX->new($path),
-		'samn' => stefans_libs::SRA_parser::SAMN->new( $path),
+		'sample_acc' => stefans_libs::SRA_parser::SRX->new($path),
+		'sample_id' => stefans_libs::SRA_parser::SAMN->new( $path),
+		'searched' => {},
   	};
+  	$self ->{'samea'} = $self->{'samn'};
 
   	bless $self, $class  if ( $class eq "stefans_libs::SRA_parser" );
-
+	
+	
   	return $self;
 
 }
 
 
 sub get_info_4 {
-	my ( $self, $accession ) = @_;
+	my ( $self, $accession, $not_further_prjna ) = @_;
+	return undef if ( $self->{'searched'}->{$accession});
+	$self->{'searched'}->{$accession} = 1;
 	my $ret ;
-	if ( $accession =~ m/^SAMN/ ) {
-		$ret = $self->{'samn'} -> get_info_4 ( $accession ); 
+	if ( $accession =~ m/^SAM/ ) {
+		$ret = $self->{'sample_id'} -> get_info_4 ( $accession );
 	}
-	if ( $accession =~ m/^SRX/ ) {
-		$ret = $self->{'srx'} -> get_info_4 ( $accession ); 
+	elsif ( $accession =~ m/^[ES]RX/ ) {
+		$ret = $self->{'sample_acc'} -> get_info_4 ( $accession ); 
 	}
-	foreach ( keys %$ret ) {
-		if ( defined $self->{lc($_)} ) {
-			$ret = $self->{lc($_)} -> get_info_4 ( $ret->{$_}, $ret );
+	else {
+		warn "Sorry I can not process an acc like '$accession'\n";
+	}
+	
+	foreach my $key ( keys %$ret ) {
+		if ( defined $self->{lc($key)} ) {
+			warn "More than one $_ acc for $accession\n" if ( @{$ret->{$key}} > 1 );
+			foreach my $acc ( @{$ret->{$key}} ) {
+				unless ( $self->{'searched'}->{$acc}){
+				$self->{'searched'}->{$acc} = 1;
+				$ret = $self->{lc($key)} -> get_info_4 ( $acc, $ret,  $not_further_prjna );
+				}
+			}
 		}
 	}
+	foreach ( keys %$ret ) {
+		$ret->{$_} = join(" ", $self->uniq ( @{$ret->{$_}}) ) if ( ref($ret->{$_}) eq "ARRAY");
+		delete ( $ret->{$_} ) if  ( ! ( defined $ret->{$_} && $ret->{$_} =~ m/\w/ ) );
+	}
 	return $ret
+}
+
+sub uniq {
+	my $self= shift;
+	return do { my %seen; grep { !$seen{$_}++ } @_ }
 }
 
 
