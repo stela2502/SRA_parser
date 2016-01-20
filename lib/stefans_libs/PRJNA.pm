@@ -129,7 +129,7 @@ sub get_info_from_file {
 	$self->{'data_table'} ||= data_table->new();
 	while ( my $line = <IN> ) {
 		chomp($line);
-		foreach ( $line =~ m/([ES]RX\d+)/g ) {
+		foreach ( $line =~ m/([ES]R[SX]\d+)/g ) {
 			print "Get info for $_:\n";
 			$loi = $self->{'SRA_parser'}->get_info_4( $_, 1 );
 			next unless ( defined $loi );

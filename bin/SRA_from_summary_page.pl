@@ -120,8 +120,24 @@ mkdir $tempath unless ( -d $tempath );
 my $obj= stefans_libs::PRJNA -> new($tempath);
 if ( -f $web_file ){
 	$value = $obj-> get_info_from_file ( $web_file );
+	if ( $value->Lines() == 0 ) {
+		Carp::confess ("Serious problem - NCBI changed the file format??\nNO DATA IN FILE $web_file\n");
+	}
 }elsif ( defined $acc ){
 	$value = $obj ->get_info_4 ( $acc ) ;
+}else {
+	die "Sorry, but I need some input from you!\n";
+}
+
+
+unless ( defined $value->Header_Position('wget link') ) {
+	 my $id = $value-> Add_2_Header ( 'wget link' );
+	 my ($sra_id) = $value->Header_Position('Run_ACC');
+	 my $sra;
+	 for ( my $i =0; $i < $value->Lines(); $i ++ ) {
+	 	$sra = @{@{$value->{'data'}}[$i]}[$sra_id];
+	 	@{@{$value->{'data'}}[$i]}[$id] = "ftp://ftp-trace.ncbi.nih.gov/sra/sra-instant/reads/ByRun/sra/SRR/".join("/",substr($sra,0,6),substr($sra,0,10), $sra).".sra";
+	 }
 }
 
 $value -> write_file( $outfile );
