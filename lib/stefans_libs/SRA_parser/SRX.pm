@@ -75,10 +75,14 @@ sub get_info_4 {
 	while (<IN>) {
 		$loi = $_
 		  if ( $_ =~ m/<div><p class="details expand e-hidden"><b><a href="/ );
+		if ( $_ =~ m/This record has not yet been released./ ){
+			warn "record $accession has not been released to the public!\n";
+			return undef;
+		}
 		map {$self->_add_2_IDs ( 'SRR', $_ )} @{$self->search_4_acc_type($_,'SRR')};
 	}
 	close ( IN);
-	
+	Carp::confess ( "I could not find the line of interest for acc '$accession' In file ".$self->get_web($accession)."\n") unless ( defined $loi );
 	$loi = $self->_rem_tags_splice($loi);
 	( $a, $b ) = $self->preprocess_loi ( $loi );
 	
