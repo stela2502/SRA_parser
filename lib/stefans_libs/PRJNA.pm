@@ -24,6 +24,9 @@ use stefans_libs::SRA_parser;
 use WWW::Mechanize;
 use stefans_libs::flexible_data_structures::data_table;
 
+
+our $VERSION = '1.01';
+
 =for comment
 
 This document is in Pod format.  To read this, use a Pod formatter,
