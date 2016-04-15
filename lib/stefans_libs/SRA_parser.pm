@@ -89,7 +89,7 @@ sub get_info_4 {
 	if ( $accession =~ m/^SAM/ ) {
 		$ret = $self->{'sample_id'} -> get_info_4 ( $accession );
 	}
-	elsif ( $accession =~ m/^[ES]RX/ ) {
+	elsif ( $accession =~ m/^[ES]R[SX]/ ) {
 		$ret = $self->{'sample_acc'} -> get_info_4 ( $accession ); 
 	}
 	else {
