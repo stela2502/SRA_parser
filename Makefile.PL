@@ -7,10 +7,11 @@ use ExtUtils::MakeMaker;
 
 opendir( DIR, "bin/" ) or die "I could not open the bin folder\n$!\n";
 
+
 WriteMakefile(
 	NAME         => "stefans_libs::SRA_parser",
 	VERSION_FROM => "lib/stefans_libs/PRJNA.pm",
-	EXE_FILES    => [ map { "bin/$_" } grep '*.bin', readdir(DIR) ],
+	EXE_FILES    => [ map { "bin/$_" } grep  !/^\./, readdir(DIR) ],
 	PREREQ_PM    => {
 		'Stefans_Libs_Essentials' => 0,
 	  }
