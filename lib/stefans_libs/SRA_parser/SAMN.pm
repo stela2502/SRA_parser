@@ -75,6 +75,11 @@ sub get_info_4 {
 		  if ( $_ =~ m/<div><div class="rprt"><h2 class="title">/ );
 	}
 	close ( IN);
+	if ( ! defined $loi ){
+		Carp::confess ( "Probably an NCBI web file change!\n"
+		."I can no longer find my line of interest in the html file!\n"
+		."Please check the file '".$self->get_web($accession) ."'\n");
+	}
 	$loi = $self->_rem_tags_splice($loi);
 	my ( $a, $b);
 	( $a, $b ) = $self->preprocess_loi ( $loi );
